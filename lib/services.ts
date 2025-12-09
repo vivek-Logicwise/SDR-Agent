@@ -5,6 +5,8 @@ import {
   generateObject,
   generateText
 } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import OpenAI from 'openai';
 import {
   FormSchema,
   QualificationSchema,
@@ -14,6 +16,11 @@ import { sendSlackMessageWithButtons } from '@/lib/slack';
 import { z } from 'zod';
 import { exa } from '@/lib/exa';
 
+// Initialize OpenAI client
+const openaiClient = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!
+});
+
 /**
  * Qualify the lead
  */
@@ -21,15 +28,52 @@ export async function qualify(
   lead: FormSchema,
   research: string
 ): Promise<QualificationSchema> {
-  const { object } = await generateObject({
-    model: 'openai/gpt-5',
-    schema: qualificationSchema,
-    prompt: `Qualify the lead and give a reason for the qualification based on the following information: LEAD DATA: ${JSON.stringify(
-      lead
-    )} and RESEARCH: ${research}`
-  });
+  try {
+    console.log('🎯 Qualifying lead with OpenAI...');
 
-  return object;
+    const completion = await openaiClient.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a lead qualification expert. Analyze leads and categorize them accurately.'
+        },
+        {
+          role: 'user',
+          content: `Qualify the lead and give a reason for the qualification based on the following information:
+
+LEAD DATA: ${JSON.stringify(lead, null, 2)}
+
+RESEARCH: ${research}
+
+Respond in JSON format with:
+{
+  "category": "QUALIFIED" | "FOLLOW_UP" | "UNQUALIFIED" | "SUPPORT",
+  "reason": "brief explanation for the qualification decision"
+}`
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.3
+    });
+
+    const content = completion.choices[0]?.message?.content || '{}';
+    const parsed = JSON.parse(content);
+
+    console.log('✅ Qualification result:', parsed.category);
+
+    return {
+      category: parsed.category || 'UNQUALIFIED',
+      reason: parsed.reason || 'Unable to qualify lead'
+    };
+  } catch (error) {
+    console.error('❌ Qualification error:', error);
+    return {
+      category: 'UNQUALIFIED',
+      reason: 'Error during qualification process'
+    };
+  }
 }
 
 /**
@@ -39,14 +83,47 @@ export async function writeEmail(
   research: string,
   qualification: QualificationSchema
 ) {
-  const { text } = await generateText({
-    model: 'openai/gpt-5',
-    prompt: `Write an email for a ${
-      qualification.category
-    } lead based on the following information: ${JSON.stringify(research)}`
-  });
+  try {
+    console.log('✉️ Generating email with OpenAI...');
 
-  return text;
+    const completion = await openaiClient.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a professional sales email writer. Create personalized, engaging emails that provide value.'
+        },
+        {
+          role: 'user',
+          content: `Write a personalized email for a ${qualification.category} lead based on the following information:
+
+RESEARCH: ${research}
+
+QUALIFICATION REASON: ${qualification.reason}
+
+Requirements:
+- Professional and friendly tone
+- Reference specific details from the research
+- Provide clear value proposition
+- Include a clear call-to-action
+- Keep it concise (3-4 paragraphs max)
+- No subject line, just the email body`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    });
+
+    const email = completion.choices[0]?.message?.content || '';
+
+    console.log('✅ Email generated successfully');
+
+    return email;
+  } catch (error) {
+    console.error('❌ Email generation error:', error);
+    return 'Hello,\n\nThank you for your interest. We would love to discuss how we can help your organization.\n\nBest regards';
+  }
 }
 
 /**
@@ -195,7 +272,7 @@ const queryKnowledgeBase = tool({
  * This agent is used to research the lead and return a comprehensive report
  */
 export const researchAgent = new Agent({
-  model: 'openai/gpt-5',
+  model: openai('gpt-4o-mini'),
   system: `
   You are a researcher to find information about a lead. You are given a lead and you need to find information about the lead.
   
