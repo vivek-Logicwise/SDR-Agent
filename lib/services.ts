@@ -21,6 +21,17 @@ export async function qualify(
   lead: FormSchema,
   research: string
 ): Promise<QualificationSchema> {
+  console.log('\n════════════════════════════════════════════════════');
+  console.log('🎯 STEP 2: QUALIFYING LEAD');
+  console.log('════════════════════════════════════════════════════');
+  console.log('📧 Lead Email:', lead.email);
+  console.log('👤 Lead Name:', lead.name);
+  console.log('🏢 Company:', lead.company || 'Not provided');
+  console.log('📝 Message:', lead.message?.substring(0, 100) + '...');
+  console.log('🔍 Research Length:', research.length, 'characters');
+  console.log('⏰ Timestamp:', new Date().toISOString());
+  console.log('────────────────────────────────────────────────────');
+
   const { object } = await generateObject({
     model: 'openai/gpt-5',
     schema: qualificationSchema,
@@ -28,6 +39,11 @@ export async function qualify(
       lead
     )} and RESEARCH: ${research}`
   });
+
+  console.log('\n✅ QUALIFICATION RESULT:');
+  console.log('   Category:', object.category);
+  console.log('   Reason:', object.reason);
+  console.log('════════════════════════════════════════════════════\n');
 
   return object;
 }
@@ -39,12 +55,26 @@ export async function writeEmail(
   research: string,
   qualification: QualificationSchema
 ) {
+  console.log('\n════════════════════════════════════════════════════');
+  console.log('✉️  STEP 3: GENERATING EMAIL');
+  console.log('════════════════════════════════════════════════════');
+  console.log('📊 Qualification Category:', qualification.category);
+  console.log('💡 Reason:', qualification.reason);
+  console.log('📄 Research Summary:', research.substring(0, 200) + '...');
+  console.log('⏰ Timestamp:', new Date().toISOString());
+  console.log('────────────────────────────────────────────────────');
+
   const { text } = await generateText({
     model: 'openai/gpt-5',
     prompt: `Write an email for a ${
       qualification.category
     } lead based on the following information: ${JSON.stringify(research)}`
   });
+
+  console.log('\n✅ EMAIL GENERATED:');
+  console.log('   Length:', text.length, 'characters');
+  console.log('   Preview:', text.substring(0, 150) + '...');
+  console.log('════════════════════════════════════════════════════\n');
 
   return text;
 }
@@ -57,6 +87,18 @@ export async function humanFeedback(
   email: string,
   qualification: QualificationSchema
 ) {
+  console.log('\n════════════════════════════════════════════════════');
+  console.log('💬 STEP 4: SENDING TO SLACK FOR APPROVAL');
+  console.log('════════════════════════════════════════════════════');
+  console.log('📧 Email Preview:', email.substring(0, 100) + '...');
+  console.log('📊 Category:', qualification.category);
+  console.log('💡 Reason:', qualification.reason);
+  console.log('🔧 SLACK_CHANNEL_ID:', process.env.SLACK_CHANNEL_ID || 'NOT SET');
+  console.log('🔑 SLACK_BOT_TOKEN exists:', !!process.env.SLACK_BOT_TOKEN);
+  console.log('🔐 SLACK_SIGNING_SECRET exists:', !!process.env.SLACK_SIGNING_SECRET);
+  console.log('⏰ Timestamp:', new Date().toISOString());
+  console.log('────────────────────────────────────────────────────');
+
   const message = `*New Lead Qualification*\n\n*Email:* ${email}\n*Category:* ${
     qualification.category
   }\n*Reason:* ${qualification.reason}\n\n*Research:*\n${research.slice(
@@ -66,7 +108,28 @@ export async function humanFeedback(
 
   const slackChannel = process.env.SLACK_CHANNEL_ID || '';
 
-  return await sendSlackMessageWithButtons(slackChannel, message);
+  if (!slackChannel) {
+    console.error('\n❌ ERROR: SLACK_CHANNEL_ID is not set!');
+    throw new Error('SLACK_CHANNEL_ID is required but not set');
+  }
+
+  console.log('📤 Sending message to channel:', slackChannel);
+  console.log('📏 Message length:', message.length, 'characters');
+
+  try {
+    const result = await sendSlackMessageWithButtons(slackChannel, message);
+    console.log('\n✅ SLACK MESSAGE SENT SUCCESSFULLY!');
+    console.log('   Channel:', result.channel);
+    console.log('   Message TS:', result.messageTs);
+    console.log('════════════════════════════════════════════════════\n');
+    return result;
+  } catch (error: any) {
+    console.error('\n❌ SLACK ERROR:', error.message);
+    console.error('   Error Code:', error.code);
+    console.error('   Error Data:', error.data);
+    console.error('════════════════════════════════════════════════════\n');
+    throw error;
+  }
 }
 
 /**
@@ -157,17 +220,36 @@ const search = tool({
       .describe('The category of the result you are looking for')
   }),
   execute: async ({ keywords, resultCategory }) => {
-    /**
-     * Deep research using exa.ai
-     * Return the results in markdown format
-     */
-    const result = await exa.searchAndContents(keywords, {
-      numResults: 2,
-      type: 'keyword',
-      category: resultCategory,
-      summary: true
-    });
-    return result;
+    console.log('\n🔍 SEARCH TOOL EXECUTED:');
+    console.log('   Keywords:', keywords);
+    console.log('   Category:', resultCategory);
+    console.log('   ⏰ Time:', new Date().toISOString());
+    
+    try {
+      /**
+       * Deep research using exa.ai
+       * Return the results in markdown format
+       */
+      const result = await exa.searchAndContents(keywords, {
+        numResults: 2,
+        type: 'keyword',
+        category: resultCategory,
+        summary: true
+      });
+      
+      console.log('   ✅ Results found:', result?.results?.length || 0);
+      if (result?.results && result.results.length > 0) {
+        result.results.forEach((r: any, i: number) => {
+          console.log(`   ${i + 1}. ${r.title || 'No title'}`);
+          console.log(`      URL: ${r.url || 'No URL'}`);
+        });
+      }
+      
+      return result;
+    } catch (error: any) {
+      console.error('   ❌ Search error:', error.message);
+      throw error;
+    }
   }
 });
 

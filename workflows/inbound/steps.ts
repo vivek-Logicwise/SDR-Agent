@@ -22,9 +22,30 @@ export const stepQualify = async (data: FormSchema, research: string) => {
 export const stepResearch = async (data: FormSchema) => {
   'use step';
 
+  console.log('\n════════════════════════════════════════════════════════');
+  console.log('🔬 STEP 1: RESEARCH AGENT STARTING');
+  console.log('════════════════════════════════════════════════════════');
+  console.log('📧 Lead Email:', data.email);
+  console.log('👤 Lead Name:', data.name);
+  console.log('🏢 Company:', data.company || 'Not provided');
+  console.log('📱 Phone:', data.phone || 'Not provided');
+  console.log('💬 Message Preview:', data.message?.substring(0, 100) + '...');
+  console.log('⏰ Start Time:', new Date().toISOString());
+  console.log('────────────────────────────────────────────────────────');
+
+  const startTime = Date.now();
+  
   const { text: research } = await researchAgent.generate({
     prompt: `Research the lead: ${JSON.stringify(data)}`
   });
+
+  const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+  console.log('\n✅ RESEARCH COMPLETED:');
+  console.log('   Duration:', duration, 'seconds');
+  console.log('   Research Length:', research.length, 'characters');
+  console.log('   Research Preview:', research.substring(0, 200) + '...');
+  console.log('════════════════════════════════════════════════════════\n');
 
   return research;
 };
