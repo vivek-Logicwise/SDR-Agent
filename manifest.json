@@ -16,11 +16,11 @@
   "settings": {
     "interactivity": {
       "is_enabled": true,
-      "request_url": "https://your-lead-agent-app-url.com/api/slack"
+      "request_url": "https://lazy-carrots-lay.loca.lt/api/slack"
     },
     "event_subscriptions": {
-      "request_url": "https://your-lead-agent-app-url.com/api/slack",
-      "bot_events": []
+      "request_url": "https://lazy-carrots-lay.loca.lt/api/slack",
+      "bot_events": ["app_mention", "message.channels"]
     },
     "org_deploy_enabled": true,
     "socket_mode_enabled": false,
