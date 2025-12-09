@@ -20,16 +20,33 @@ import {
 export const workflowInbound = async (data: FormSchema) => {
   'use workflow';
 
+  console.log('🚀 Workflow started for lead:', data.email);
+
   const research = await stepResearch(data);
+  console.log('✅ Research completed');
+
   const qualification = await stepQualify(data, research);
+  console.log('✅ Qualification completed:', {
+    category: qualification.category,
+    reason: qualification.reason
+  });
 
   if (
     qualification.category === 'QUALIFIED' ||
     qualification.category === 'FOLLOW_UP'
   ) {
+    console.log('✅ Lead qualifies for email - generating email...');
     const email = await stepWriteEmail(research, qualification);
+    console.log('✅ Email generated - sending for approval...');
     await stepHumanFeedback(research, email, qualification);
+    console.log('✅ Human feedback step completed');
+  } else {
+    console.log(
+      '⚠️  Lead did not qualify for email. Category:',
+      qualification.category
+    );
   }
 
+  console.log('✅ Workflow completed for lead:', data.email);
   // take other actions here based on other qualification categories
 };
