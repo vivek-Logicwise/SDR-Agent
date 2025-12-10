@@ -36,10 +36,31 @@ export async function qualify(
   const { object } = await generateObject({
     model: 'openai/gpt-5',
     schema: qualificationSchema,
-    prompt: `Qualify the lead and give a reason for the qualification based on the following information: LEAD DATA: ${JSON.stringify(
-      lead
-    )} and RESEARCH: ${research}`
-  });
+    prompt: `
+         You are a Lead Qualification AI for Datapelago.
+
+         Your job is to classify leads into one of the following categories:
+            - Qualified — Strong match to ICP, clear need, and intent to purchase
+            - Follow-up — Partial fit or unclear intent; needs nurturing
+            - Irrelevant — Not a target market or no business value
+
+        Evaluate both the LEAD DATA and RESEARCH findings and return a JSON response:
+
+        {
+            "qualification": "<Qualified | Follow-up | Irrelevant>",
+            "reason": "<1-3 clear bullet points about why you classified this lead>"
+        }
+
+        Rules:
+           - Base your decision ONLY on provided information
+           - Be concise and business-focused
+           - Do not hallucinate facts not found in the data
+
+       LEAD DATA:
+           ${JSON.stringify(lead, null, 2)}
+
+       RESEARCH:${research} `
+});
 
   console.log('\n✅ QUALIFICATION RESULT:');
   console.log('   Category:', object.category);
@@ -56,14 +77,6 @@ export async function writeEmail(
   research: string,
   qualification: QualificationSchema
 ) {
-  console.log('\n════════════════════════════════════════════════════');
-  console.log('✉️  STEP 3: GENERATING EMAIL');
-  console.log('════════════════════════════════════════════════════');
-  console.log('📊 Qualification Category:', qualification.category);
-  console.log('💡 Reason:', qualification.reason);
-  console.log('📄 Research Summary:', research.substring(0, 200) + '...');
-  console.log('⏰ Timestamp:', new Date().toISOString());
-  console.log('────────────────────────────────────────────────────');
 
   const { text } = await generateText({
     model: 'openai/gpt-5',
@@ -75,8 +88,8 @@ Based on the research below, write an email that is:
 - Includes a clear value proposition
 - Has a strong call-to-action
 - Professional but conversational tone
-- grab the information and working approch from "https://www.datapelago.ai/" cause this company offering proposal reaserch based on this
-
+- grab the information and working approch from "https://www.datapelago.ai/" cause this company offering proposal reaserch based on lead problem.
+- Don't '-' use overly formal language or human generated emotional to lead email templates.
 
 Use this structure:
 
@@ -122,11 +135,6 @@ IMPORTANT:
 - Include placeholders like {FirstName}, [calendar link], etc. for fields we don't have`
   });
 
-  console.log('\n✅ EMAIL GENERATED:');
-  console.log('   Length:', text.length, 'characters');
-  console.log('   Preview:', text.substring(0, 150) + '...');
-  console.log('════════════════════════════════════════════════════\n');
-
   return text;
 }
 
@@ -138,21 +146,8 @@ export async function humanFeedback(
   email: string,
   qualification: QualificationSchema
 ) {
-  console.log('\n════════════════════════════════════════════════════');
-  console.log('💬 STEP 4: SENDING TO SLACK FOR APPROVAL');
-  console.log('════════════════════════════════════════════════════');
-  console.log('📧 Email Preview:', email.substring(0, 100) + '...');
-  console.log('📊 Category:', qualification.category);
-  console.log('💡 Reason:', qualification.reason);
-  console.log('🔧 SLACK_CHANNEL_ID:', process.env.SLACK_CHANNEL_ID || 'NOT SET');
-  console.log('🔑 SLACK_BOT_TOKEN exists:', !!process.env.SLACK_BOT_TOKEN);
-  console.log('🔐 SLACK_SIGNING_SECRET exists:', !!process.env.SLACK_SIGNING_SECRET);
-  console.log('⏰ Timestamp:', new Date().toISOString());
-  console.log('────────────────────────────────────────────────────');
-
-  const message = `*New Lead Qualification*\n\n*Email:* ${email}\n*Category:* ${
-    qualification.category
-  }\n*Reason:* ${qualification.reason}\n\n*Research:*\n${research.slice(
+  const message = `*New Lead Qualification*\n\n*Email:* ${email}\n*Category:* ${qualification.category}
+  \n*Reason:* ${qualification.reason}\n\n*Research:*\n${research.slice(
     0,
     500
   )}...\n\n*Please review and approve or reject this email*`;
@@ -160,25 +155,13 @@ export async function humanFeedback(
   const slackChannel = process.env.SLACK_CHANNEL_ID || '';
 
   if (!slackChannel) {
-    console.error('\n❌ ERROR: SLACK_CHANNEL_ID is not set!');
     throw new Error('SLACK_CHANNEL_ID is required but not set');
   }
 
-  console.log('📤 Sending message to channel:', slackChannel);
-  console.log('📏 Message length:', message.length, 'characters');
-
   try {
     const result = await sendSlackMessageWithButtons(slackChannel, message);
-    console.log('\n✅ SLACK MESSAGE SENT SUCCESSFULLY!');
-    console.log('   Channel:', result.channel);
-    console.log('   Message TS:', result.messageTs);
-    console.log('════════════════════════════════════════════════════\n');
     return result;
   } catch (error: any) {
-    console.error('\n❌ SLACK ERROR:', error.message);
-    console.error('   Error Code:', error.code);
-    console.error('   Error Data:', error.data);
-    console.error('════════════════════════════════════════════════════\n');
     throw error;
   }
 }
@@ -191,14 +174,6 @@ export async function sendEmail(
   recipientEmail?: string,
   recipientName?: string
 ) {
-  console.log('\n════════════════════════════════════════════════════');
-  console.log('📧 SENDING EMAIL');
-  console.log('════════════════════════════════════════════════════');
-  console.log('📬 To:', recipientEmail || 'Not specified');
-  console.log('👤 Name:', recipientName || 'Not specified');
-  console.log('📄 Content Length:', emailContent.length, 'characters');
-  console.log('⏰ Timestamp:', new Date().toISOString());
-  console.log('────────────────────────────────────────────────────');
 
   try {
     // Check for required environment variables
@@ -207,12 +182,6 @@ export async function sendEmail(
     const toEmail = 'viveksavani008@gmail.com';
 
     if (!gmailUser || !gmailAppPassword) {
-      console.warn('⚠️  Gmail credentials not configured - Email simulation mode');
-      console.log('📧 Simulated Email Send:');
-      console.log('   From:', gmailUser || 'not-configured@gmail.com');
-      console.log('   To:', toEmail);
-      console.log('✅ Email simulated successfully');
-      console.log('════════════════════════════════════════════════════\n');
       return {
         success: true,
         simulated: true,
@@ -230,11 +199,6 @@ export async function sendEmail(
       subject = subjectMatch[1].trim();
       body = emailContent.substring(subjectMatch[0].length).trim();
     }
-
-    // Create Gmail transporter
-    console.log('📤 Sending via Gmail SMTP...');
-    console.log('   From:', gmailUser);
-    console.log('   To:', toEmail);
     
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -256,24 +220,12 @@ export async function sendEmail(
       html: `<div style="font-family: Arial, sans-serif; line-height: 1.6;">${htmlBody}</div>`
     });
 
-    console.log('✅ Email sent successfully!');
-    console.log('   Message ID:', info.messageId);
-    console.log('   From:', gmailUser);
-    console.log('   To:', toEmail);
-    console.log('   Subject:', subject);
-    console.log('════════════════════════════════════════════════════\n');
-
     return {
       success: true,
       emailId: info.messageId,
       simulated: false
     };
   } catch (error: any) {
-    console.error('\n❌ EMAIL SENDING ERROR');
-    console.error('   Message:', error.message);
-    console.error('   Stack:', error.stack);
-    console.error('════════════════════════════════════════════════════\n');
-    
     // Don't throw error, just log it and return failure status
     // This prevents the workflow from breaking if email fails
     return {
@@ -430,7 +382,7 @@ export const researchAgent = new Agent({
   - fetchUrl: Fetches the contents of a public URL
   - crmSearch: Searches the CRM for the given company name
   - techStackAnalysis: Analyzes the tech stack of the given domain
-  - reserch should be based on this company https://www.datapelago.ai/
+  - research should be based on this company https://www.datapelago.ai/
   
   Synthesize the information you find into a comprehensive report.
   `,
@@ -440,7 +392,6 @@ export const researchAgent = new Agent({
     fetchUrl,
     crmSearch,
     techStackAnalysis
-    // add other tools here
   },
   stopWhen: [stepCountIs(20)] // stop after max 20 steps deepdive
 });

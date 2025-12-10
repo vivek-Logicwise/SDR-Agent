@@ -88,24 +88,12 @@ export const stepHumanFeedback = async (
 ) => {
   'use step';
 
-  console.log('🔍 stepHumanFeedback: Starting...');
-  console.log('  - Has SLACK_BOT_TOKEN:', !!process.env.SLACK_BOT_TOKEN);
-  console.log(
-    '  - Has SLACK_SIGNING_SECRET:',
-    !!process.env.SLACK_SIGNING_SECRET
-  );
-  console.log('  - SLACK_CHANNEL_ID:', process.env.SLACK_CHANNEL_ID);
-  console.log('  - Qualification category:', qualification.category);
-
   if (!process.env.SLACK_BOT_TOKEN || !process.env.SLACK_SIGNING_SECRET) {
-    console.warn(
-      '⚠️  SLACK_BOT_TOKEN or SLACK_SIGNING_SECRET is not set, skipping human feedback step'
-    );
+    console.warn('SLACK_BOT_TOKEN or SLACK_SIGNING_SECRET is not set, skipping human feedback step');
     return;
   }
 
-  console.log('✅ Slack credentials found, sending message...');
   const slackMessage = await humanFeedback(research, email, qualification);
-  console.log('✅ Slack message sent successfully:', slackMessage);
+  console.log('Slack message sent successfully:', slackMessage);
   return slackMessage;
 };
