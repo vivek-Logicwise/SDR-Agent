@@ -13,6 +13,7 @@ import {
 import { sendSlackMessageWithButtons } from '@/lib/slack';
 import { z } from 'zod';
 import { exa } from '@/lib/exa';
+import nodemailer from 'nodemailer';
 
 /**
  * Qualify the lead
@@ -66,9 +67,59 @@ export async function writeEmail(
 
   const { text } = await generateText({
     model: 'openai/gpt-5',
-    prompt: `Write an email for a ${
-      qualification.category
-    } lead based on the following information: ${JSON.stringify(research)}`
+    prompt: `You are writing a professional, concise sales email for a ${qualification.category} lead.
+
+Based on the research below, write an email that is:
+- Direct and action-oriented
+- Focused on their specific pain points and goals
+- Includes a clear value proposition
+- Has a strong call-to-action
+- Professional but conversational tone
+- grab the information and working approch from "https://www.datapelago.ai/" cause this company offering proposal reaserch based on this
+
+
+Use this structure:
+
+Subject: [Compelling subject line related to their pain point or goal]
+
+Hi {FirstName},
+
+[Opening paragraph: Reference their specific pain point or goal mentioned in their inquiry]
+
+[Value proposition paragraph: Briefly explain how we can help them achieve their desired outcome]
+
+Quick recap:
+- Your goal: [Their specific goal/metric from research]
+- Our approach: [Brief solution summary addressing their pain point]
+- Expected impact: [Realistic metric or outcome]
+- Implementation: [Timeline and what's involved]
+
+Proposal at a glance:
+- Package: [Recommended tier/plan]
+- Pricing: [Pricing structure]
+- Terms: [Contract details, pilot if applicable]
+- Target start: [Proposed start date]
+
+
+Thanks,
+[Your Name]
+[Your Title]
+[Your Company]
+[Contact details]
+
+---
+
+Research and lead information:
+${research}
+
+Qualification reason: ${qualification.reason}
+
+IMPORTANT:
+- Keep the email concise and proffessional tone(under 250 words for the body)
+- Use specific details from the research
+- Make it feel personalized, not templated
+- Focus on action and next steps
+- Include placeholders like {FirstName}, [calendar link], etc. for fields we don't have`
   });
 
   console.log('\n✅ EMAIL GENERATED:');
@@ -133,12 +184,104 @@ export async function humanFeedback(
 }
 
 /**
- * Send an email
+ * Send an email using Gmail SMTP
  */
-export async function sendEmail(email: string) {
-  /**
-   * send email using provider like sendgrid, mailgun, resend etc.
-   */
+export async function sendEmail(
+  emailContent: string,
+  recipientEmail?: string,
+  recipientName?: string
+) {
+  console.log('\n════════════════════════════════════════════════════');
+  console.log('📧 SENDING EMAIL');
+  console.log('════════════════════════════════════════════════════');
+  console.log('📬 To:', recipientEmail || 'Not specified');
+  console.log('👤 Name:', recipientName || 'Not specified');
+  console.log('📄 Content Length:', emailContent.length, 'characters');
+  console.log('⏰ Timestamp:', new Date().toISOString());
+  console.log('────────────────────────────────────────────────────');
+
+  try {
+    // Check for required environment variables
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+    const toEmail = 'viveksavani008@gmail.com';
+
+    if (!gmailUser || !gmailAppPassword) {
+      console.warn('⚠️  Gmail credentials not configured - Email simulation mode');
+      console.log('📧 Simulated Email Send:');
+      console.log('   From:', gmailUser || 'not-configured@gmail.com');
+      console.log('   To:', toEmail);
+      console.log('✅ Email simulated successfully');
+      console.log('════════════════════════════════════════════════════\n');
+      return {
+        success: true,
+        simulated: true,
+        message: 'Email simulated - Gmail credentials not configured'
+      };
+    }
+
+    // Parse email content to extract subject if present
+    let subject = 'Re: Your Inquiry';
+    let body = emailContent;
+    
+    // Try to extract subject line if email starts with "Subject:"
+    const subjectMatch = emailContent.match(/^Subject:\s*(.+?)(\n|$)/i);
+    if (subjectMatch) {
+      subject = subjectMatch[1].trim();
+      body = emailContent.substring(subjectMatch[0].length).trim();
+    }
+
+    // Create Gmail transporter
+    console.log('📤 Sending via Gmail SMTP...');
+    console.log('   From:', gmailUser);
+    console.log('   To:', toEmail);
+    
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: gmailUser,
+        pass: gmailAppPassword
+      }
+    });
+
+    // Convert line breaks to HTML
+    const htmlBody = body.replace(/\n/g, '<br>');
+
+    // Send email
+    const info = await transporter.sendMail({
+      from: `"LogicWise Works" <${gmailUser}>`,
+      to: recipientName ? `"${recipientName}" <${toEmail}>` : toEmail,
+      subject: subject,
+      text: body,
+      html: `<div style="font-family: Arial, sans-serif; line-height: 1.6;">${htmlBody}</div>`
+    });
+
+    console.log('✅ Email sent successfully!');
+    console.log('   Message ID:', info.messageId);
+    console.log('   From:', gmailUser);
+    console.log('   To:', toEmail);
+    console.log('   Subject:', subject);
+    console.log('════════════════════════════════════════════════════\n');
+
+    return {
+      success: true,
+      emailId: info.messageId,
+      simulated: false
+    };
+  } catch (error: any) {
+    console.error('\n❌ EMAIL SENDING ERROR');
+    console.error('   Message:', error.message);
+    console.error('   Stack:', error.stack);
+    console.error('════════════════════════════════════════════════════\n');
+    
+    // Don't throw error, just log it and return failure status
+    // This prevents the workflow from breaking if email fails
+    return {
+      success: false,
+      error: error.message,
+      simulated: false
+    };
+  }
 }
 
 /**
@@ -287,6 +430,7 @@ export const researchAgent = new Agent({
   - fetchUrl: Fetches the contents of a public URL
   - crmSearch: Searches the CRM for the given company name
   - techStackAnalysis: Analyzes the tech stack of the given domain
+  - reserch should be based on this company https://www.datapelago.ai/
   
   Synthesize the information you find into a comprehensive report.
   `,
@@ -298,5 +442,5 @@ export const researchAgent = new Agent({
     techStackAnalysis
     // add other tools here
   },
-  stopWhen: [stepCountIs(20)] // stop after max 20 steps
+  stopWhen: [stepCountIs(20)] // stop after max 20 steps deepdive
 });

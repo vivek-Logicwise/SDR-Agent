@@ -3,6 +3,7 @@ import {
   stepHumanFeedback,
   stepQualify,
   stepResearch,
+  stepSendEmail,
   stepWriteEmail
 } from './steps';
 
@@ -55,11 +56,16 @@ export const workflowInbound = async (data: FormSchema) => {
     // Step 3: Generate Email
     const email = await stepWriteEmail(research, qualification);
     console.log('✅ Email generated successfully');
-    console.log('\n📧 EMAIL CONTENT:');
+    console.log('📧 EMAIL CONTENT:');
     console.log('────────────────────────────────────────────────────────────────────');
     console.log(email);
     console.log('────────────────────────────────────────────────────────────────────\n');
     
+    // Step 3.5: Send Email
+    console.log('📧 Sending email...');
+    await stepSendEmail(email, data.email, data.name);
+    console.log('✅ Email sent successfully');
+
     // Step 4: Get Human Approval
     console.log('📤 Sending to Slack for approval...');
     await stepHumanFeedback(research, email, qualification);

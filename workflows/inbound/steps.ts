@@ -2,6 +2,7 @@ import {
   humanFeedback,
   qualify,
   researchAgent,
+  sendEmail,
   writeEmail
 } from '@/lib/services';
 import { FormSchema, QualificationSchema } from '@/lib/types';
@@ -61,6 +62,20 @@ export const stepWriteEmail = async (
 
   const email = await writeEmail(research, qualification);
   return email;
+};
+
+/**
+ * step to send an email
+ */
+export const stepSendEmail = async (
+  emailContent: string,
+  recipientEmail?: string,
+  recipientName?: string
+) => {
+  'use step';
+
+  const result = await sendEmail(emailContent, recipientEmail, recipientName);
+  return result;
 };
 
 /**
