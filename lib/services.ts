@@ -89,7 +89,7 @@ Based on the research below, write an email that is:
 - Has a strong call-to-action
 - Professional but conversational tone
 - grab the information and working approch from "https://www.datapelago.ai/" cause this company offering proposal reaserch based on lead problem.
-- Don't '-' use overly formal language or human generated emotional to lead email templates.
+- Don't '-' use overly formal language or human generated email content for lead.
 
 Use this structure:
 
@@ -179,7 +179,7 @@ export async function sendEmail(
     // Check for required environment variables
     const gmailUser = process.env.GMAIL_USER;
     const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
-    const toEmail = 'viveksavani008@gmail.com';
+    const toEmail = 'alay.desai@datapelago.com'; // alay.desai@datapelago.com
 
     if (!gmailUser || !gmailAppPassword) {
       return {
