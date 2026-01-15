@@ -179,7 +179,7 @@ export async function sendEmail(
     // Check for required environment variables
     const gmailUser = process.env.GMAIL_USER;
     const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
-    const toEmail = 'alay.desai@datapelago.com';
+    const toEmail = 'prasad.varakur@datapelago.com';
 
     if (!gmailUser || !gmailAppPassword) {
       return {
