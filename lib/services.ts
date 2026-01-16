@@ -75,8 +75,11 @@ export async function qualify(
  */
 export async function writeEmail(
   research: string,
-  qualification: QualificationSchema
+  qualification: QualificationSchema,
+  leadName?: string
 ) {
+
+  const senderName = process.env.SENDER_NAME || 'DataPelago Team';
 
   const { text } = await generateText({
     model: 'openai/gpt-5',
@@ -95,7 +98,7 @@ Use this structure:
 
 Subject: [Compelling subject line related to their pain point or goal]
 
-Hi {FirstName},
+Hi ${leadName},
 
 [Opening paragraph: Reference their specific pain point or goal mentioned in their inquiry]
 
@@ -115,10 +118,9 @@ Proposal at a glance:
 
 
 Thanks,
-[Your Name]
-[Your Title]
-[Your Company]
-[Contact details]
+${senderName}
+DataPelago
+https://www.datapelago.ai/
 
 ---
 
@@ -179,7 +181,9 @@ export async function sendEmail(
     // Check for required environment variables
     const gmailUser = process.env.GMAIL_USER;
     const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
-    const toEmail = 'prasad.varakur@datapelago.com';
+    const toEmail = recipientEmail || process.env.EMAIL_TO;
+    const ccEmail = process.env.EMAIL_CC;
+    const bccEmail = process.env.EMAIL_BCC;
 
     if (!gmailUser || !gmailAppPassword) {
       return {
@@ -211,14 +215,27 @@ export async function sendEmail(
     // Convert line breaks to HTML
     const htmlBody = body.replace(/\n/g, '<br>');
 
-    // Send email
-    const info = await transporter.sendMail({
-      from: `"LogicWise Works" <${gmailUser}>`,
+    // Build email options
+    const mailOptions: any = {
+      from: `"DataPelago" <${gmailUser}>`,
       to: recipientName ? `"${recipientName}" <${toEmail}>` : toEmail,
       subject: subject,
       text: body,
       html: `<div style="font-family: Arial, sans-serif; line-height: 1.6;">${htmlBody}</div>`
-    });
+    };
+
+    // Add CC if provided
+    if (ccEmail && ccEmail.trim()) {
+      mailOptions.cc = ccEmail;
+    }
+
+    // Add BCC if provided
+    if (bccEmail && bccEmail.trim()) {
+      mailOptions.bcc = bccEmail;
+    }
+
+    // Send email
+    const info = await transporter.sendMail(mailOptions);
 
     return {
       success: true,

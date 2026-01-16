@@ -27,7 +27,7 @@ export const workflowInbound = async (data: FormSchema) => {
   if ( qualification.category === 'QUALIFIED' || qualification.category === 'FOLLOW_UP') 
   {
     // Step 3: Generate Email
-    const email = await stepWriteEmail(research, qualification);
+    const email = await stepWriteEmail(research, qualification, data.name);
     
     // Step 3.5: Send Email
     console.log('Sending email...');

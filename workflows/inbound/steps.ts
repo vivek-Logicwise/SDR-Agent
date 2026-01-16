@@ -56,11 +56,12 @@ export const stepResearch = async (data: FormSchema) => {
  */
 export const stepWriteEmail = async (
   research: string,
-  qualification: QualificationSchema
+  qualification: QualificationSchema,
+  leadName?: string
 ) => {
   'use step';
 
-  const email = await writeEmail(research, qualification);
+  const email = await writeEmail(research, qualification, leadName);
   return email;
 };
 
